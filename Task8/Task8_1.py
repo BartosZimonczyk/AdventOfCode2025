@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import time
 from termcolor import colored
+from collections import Counter
 
 with open("Task8/input_test.txt", encoding="utf-8") as file:
     data = file.read()
@@ -44,15 +45,22 @@ for i in range(len(jb_with_assignments)):
     jb_with_assignments[i][3] = min_point
     jb_with_assignments[i][4] = f'{min(i, min_point)}_{max(i, min_point)}'
 
-jb_with_assignments.sort(key = lambda x: x[2])
-for jb in jb_with_assignments:
+jb_with_assignments_sorted = sorted(jb_with_assignments, key = lambda x: x[2])
+for jb in jb_with_assignments_sorted:
     print(jb)
 
-managed_connections = []
-for i in range(len(jb_with_assignments)):
-    first_jb, first_ass, first_dist, first_neighbor, first_id = jb_with_assignments[i]
+managed_connections = set()
+circuiut_id = 0
+for i in range(len(jb_with_assignments_sorted)):
+    jb_with_assignments_sorted = sorted(jb_with_assignments, key = lambda x: x[2])
+    first_jb, first_ass, first_dist, first_neighbor, first_id = jb_with_assignments_sorted[i]
+    if first_id in managed_connections:
+        continue
+
+    managed_connections.add(first_id)
+
+    second_jb, second_ass, second_dist, second_neighbor, second_id = jb_with_assignments[first_neighbor]
     
-        
     # if first_ass == -1 and min_ass == -1:
     #     print(f"Closest neighbor is point no. {min_point}. Both assigned to new circuit no. {circuiut_id}")
     #     jb_with_assignments[i][1] = circuiut_id
@@ -64,14 +72,19 @@ for i in range(len(jb_with_assignments)):
     # elif first_ass == -1:
     #     print(f"Closest neighbor is point no. {min_point}. Current box assigned to existing circuit no. {min_ass}")
     #     jb_with_assignments[i][1] = min_ass
-    # if first_ass == min_ass:
-    #     print(f"Closest neighbor is point no. {min_point}. Both are already assigned to circuit no. {first_ass}")
-    # elif first_ass != min_ass:
-    #     new_id = min(first_ass, min_ass)
-    #     print(f"Closest neighbor is point no. {min_point}. Both are already assigned different ciruits. Merging {first_ass} and {min_ass} to {new_id}")
-    #     for j in range(len(jb_with_assignments)):
-    #         second_jb, second_ass = jb_with_assignments[j]
-    #         if second_ass == min_ass:
-    #             jb_with_assignments[j][1] = new_id
+    if first_ass == second_ass:
+        print(f"Both are already assigned to circuit no. {first_ass}")
+    elif first_ass != second_ass:
+        new_id = min(first_ass, second_ass)
+        print(f"Both are assigned different ciruits. Merging {first_ass} and {second_ass} to {new_id}")
+        for j in range(len(jb_with_assignments)):
+            third_jb, third_ass, third_dist, third_neighbor, third_id = jb_with_assignments[j]
+            if third_ass == second_ass:
+                jb_with_assignments[j][1] = new_id
     
-# print(jb_with_assignments)
+    if len(managed_connections) == 10:
+        break
+
+data = Counter([item[1] for item in jb_with_assignments])
+
+print(data.most_common(10))
