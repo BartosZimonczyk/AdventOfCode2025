@@ -24,41 +24,53 @@ def distance3d(point1: list, point2: list) -> float:
 
 junction_boxes_array = np.array(junction_boxes_coords)
 jb_tree = scipy.spatial.cKDTree(junction_boxes_array)
-jb_assigned = []
+jb_assigned = dict()
+cuircuit_names = set()
 for i, coords in enumerate(junction_boxes_array):
-    neighbor = jb_tree.query(coords, k=2)
-    neighbor_dist, neighbor_id = float(neighbor[0][1]), int(neighbor[1][1])
-    print(f'For point {coords} found neighbor {neighbor_id} in distance {neighbor_dist: 10.2f}')
-    jb_assigned.append([neighbor_id, neighbor_dist, i, i, f'{min(neighbor_id, i)}-{max(neighbor_id, i)}'])
+    neighbors = jb_tree.query(coords, k=20)
+    for j in range(len(neighbors[0])):
+        if j == 0:
+            continue
+        neighbor_dist, neighbor_id = float(neighbors[0][j]), int(neighbors[1][j])
+        cuircuit_name = f'{min(neighbor_id, i)}-{max(neighbor_id, i)}'
+        if cuircuit_name in cuircuit_names:
+            continue
+        cuircuit_names.add(cuircuit_name)
+            
+        print(f'For point {coords} found neighbor {neighbor_id} in distance {neighbor_dist: 10.2f}')
+        # if cuircuit_name not in cuircuit_names:
+        jb_assigned[cuircuit_name] = [str(neighbor_id), neighbor_dist, set([i])]
+        cuircuit_names.add(cuircuit_name)
 
-jb_assigned_sorted = sorted(jb_assigned, key=lambda x : x[1])
-
+jb_assigned_sorted = dict(sorted(jb_assigned.items(), key=lambda kv : kv[1][1]))
 cuircuit_id = 0
-handled_junkboxes = set()
-for i in range(len(jb_assigned_sorted)):
-    if len(handled_junkboxes) == 10:
+handled_cuircuits = set()
+keys_sorted = [kv for kv in jb_assigned_sorted]
+
+for jb in jb_assigned_sorted.items():
+    print(jb)
+
+for i, key in enumerate(keys_sorted):
+    if i == 10:
         break
 
-    neighbor_id, neighbor_dist, current_id, current_cuircuit, current_name = jb_assigned_sorted[i]
-    n_of_n_id, _, _, neighbor_cuircuit, _ = jb_assigned[neighbor_id]
-    if current_name in handled_junkboxes:
-        continue
-    handled_junkboxes.add(current_id)
-    if n_of_n_id == current_id:
-        handled_junkboxes.add(neighbor_id)
-    if neighbor_cuircuit == current_cuircuit:
-        print(f'Current point: {current_id}. Closest neighbor: {neighbor_id}. Already in the same cuircuit: {current_cuircuit}')
-    else:
-        new_cuircuit = min(neighbor_cuircuit, current_cuircuit)
-        print(f'Current point: {current_id}. Closest neighbor: {neighbor_id}. Assigned to cuircuit: {new_cuircuit}')
-        for j in range(len(jb_assigned_sorted)):
-            this_cuircuit = jb_assigned[j][3]
-            if this_cuircuit == neighbor_cuircuit or this_cuircuit == current_cuircuit:
-                jb_assigned[j][3] = new_cuircuit          
-    jb_assigned_sorted = sorted(jb_assigned, key=lambda x : x[1])
+    neighbor_id, neighbor_dist, current_cuircuit = jb_assigned_sorted[key]
+    n_of_n_id, _, neighbor_cuircuit = jb_assigned[neighbor_id]
 
-jb_assigned_sorted = sorted(jb_assigned, key=lambda x : x[1])
-for jb in jb_assigned:
+    if neighbor_cuircuit == current_cuircuit:
+        print(f'Current point: {key}. Closest neighbor: {neighbor_id}. Already in the same cuircuit: {current_cuircuit}')
+    else:
+        new_cuircuit = neighbor_cuircuit | current_cuircuit
+        print(f'Current point: {key}. Closest neighbor: {neighbor_id}. Assigned to cuircuit: {new_cuircuit}')
+        for key_loop in keys_sorted:
+            this_cuircuit = jb_assigned[key_loop][2]
+            if this_cuircuit == neighbor_cuircuit or this_cuircuit == current_cuircuit:
+                jb_assigned[key_loop][2] = new_cuircuit          
+    jb_assigned_sorted = dict(sorted(jb_assigned.items(), key=lambda kv : kv[1][1]))
+
+jb_assigned_sorted = dict(sorted(jb_assigned.items(), key=lambda kv : kv[1][1]))
+for jb in jb_assigned_sorted.items():
     print(jb)
-data = Counter([item[3] for item in jb_assigned])
+
+data = Counter(['_'.join(sorted([str(v) for v in item[2]])) for key, item in jb_assigned.items()])
 print(data.most_common(10))
